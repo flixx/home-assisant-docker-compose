@@ -1,0 +1,21 @@
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+# Text to speech
+tts:
+  - platform: google_translate
+group: !include groups.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+recorder:
+  purge_keep_days: 30
+  db_url: "postgresql://postgres-ha:asldnajsdnasjdnakösdn@postgres:5432/ha"
+mqtt:
+  discovery: true
+  broker: mosquitto
+  birth_message:
+    topic: 'hass/status'
+    payload: 'online'
+  will_message:
+    topic: 'hass/status'
+    payload: 'offline'
