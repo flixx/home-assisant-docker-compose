@@ -1,0 +1,93 @@
+version: '3'
+services:
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto:latest
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 125M
+    volumes:
+      - ./data-mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./data-mosquitto/data:/mosquitto/data
+      - ./data-mosquitto/log:/mosquitto/log
+
+  zigbee2mqtt:
+    container_name: zigbee2mqtt
+    depends_on:
+      - mosquitto
+    image: koenkk/zigbee2mqtt
+    volumes:
+      - ./data-zigbee2mqtt:/app/data
+      - /run/udev:/run/udev:ro
+    devices:
+      - /dev/ttyACM0:/dev/ttyACM0
+    deploy:
+      resources:
+        limits:
+          memory: 100M
+    restart: always
+    privileged: true
+    environment:
+      - TZ=Europe/Prague
+  postgres:
+    container_name: postgres-ha
+    image: postgres
+    volumes:
+      - ./data-postgres/:/var/lib/postgresql/data/
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+    env_file:
+      - .env
+  homeassistant:
+    container_name: home-assistant
+    depends_on:
+      - mosquitto
+      - postgres
+    image: homeassistant/home-assistant:stable
+    volumes:
+      - ./data-ha:/config
+    env_file:
+      - .env
+    environment:
+      - TZ=Europe/Prague
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+    restart: always
+    ports:
+      - 8123:8123
+
+  zigbee2mqttAssistant:
+    image: carldebilly/zigbee2mqttassistant
+    container_name: zigbee2mqttAssistant
+    environment:
+      - Z2MA_SETTINGS__MQTTSERVER=mosquitto
+      # Set to your TimeZone when using on Linux https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+      # Won't work if you're using the Windows version of the container
+      - TZ=Europe/Copenhagen
+    ports:
+      - 8880:80
+    restart: always
+  node-red:
+    container_name: node-red
+    depends_on:
+      - mosquitto
+    image: nodered/node-red:latest
+    environment:
+      - TZ=Europe/Amsterdam
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./data-nodered:/data
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+    restart: always
+    user: root:root
+
